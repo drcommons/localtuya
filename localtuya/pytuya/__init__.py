@@ -34,7 +34,7 @@ __author__ = 'clach04'
 
 log = logging.getLogger(__name__)
 #logging.basicConfig()  # TODO include function name/line numbers in log
-#log.setLevel(level=logging.DEBUG)  # Debug hack!
+log.setLevel(level=logging.DEBUG)  # Debug hack!
 
 log.info('%s version %s', __name__, version)
 log.info('Python %s on %s', sys.version, sys.platform)
@@ -212,7 +212,7 @@ class XenonDevice(object):
         #print(json_payload)
         json_payload = json_payload.replace(' ', '')  # if spaces are not removed device does not respond!
         json_payload = json_payload.encode('utf-8')
-        log.debug('json_payload=%r', json_payload)
+        #print('json_payload=%r', json_payload)
 
         if self.version == 3.3:
             self.cipher = AESCipher(self.local_key)  # expect to connect and then disconnect to set new
@@ -223,7 +223,7 @@ class XenonDevice(object):
                 json_payload = PROTOCOL_VERSION_BYTES_33 + b"\0\0\0\0\0\0\0\0\0\0\0\0" + json_payload
         elif command == SET:
             # need to encrypt
-            #print('json_payload %r' % json_payload)
+            print('json_payload %r' % json_payload)
             self.cipher = AESCipher(self.local_key)  # expect to connect and then disconnect to set new
             json_payload = self.cipher.encrypt(json_payload)
             #print('crypted json_payload %r' % json_payload)
@@ -262,11 +262,11 @@ class XenonDevice(object):
         buffer = buffer[:-8] + hex2bin(hex_crc) + buffer[-4:]
         #print('command', command)
         #print('prefix')
-        #print(payload_dict[self.dev_type][command]['prefix'])
-        #print(repr(buffer))
-        #print(bin2hex(buffer, pretty=True))
-        #print(bin2hex(buffer, pretty=False))
-        #print('full buffer(%d) %r' % (len(buffer), " ".join("{:02x}".format(ord(c)) for c in buffer)))
+#        print(payload_dict[self.dev_type][command]['prefix'])
+       # print(repr(buffer))
+       # print(bin2hex(buffer, pretty=True))
+       # print(bin2hex(buffer, pretty=False))
+#        print('full buffer(%d) %r' % (len(buffer), " ".join("{:02x}".format(ord(c)) for c in buffer)))
         return buffer
     
 class Device(XenonDevice):
@@ -352,11 +352,11 @@ class Device(XenonDevice):
         
         return data
     
-    def turn_on(self, switch=1):
+    def turn_on(self, switch=20):
         """Turn the device on"""
         self.set_status(True, switch)
 
-    def turn_off(self, switch=1):
+    def turn_off(self, switch=20):
         """Turn the device off"""
         self.set_status(False, switch)
 
@@ -388,11 +388,11 @@ class OutletDevice(Device):
         super(OutletDevice, self).__init__(dev_id, address, local_key, dev_type)
 
 class BulbDevice(Device):
-    DPS_INDEX_ON         = '1'
-    DPS_INDEX_MODE       = '2'
-    DPS_INDEX_BRIGHTNESS = '3'
-    DPS_INDEX_COLOURTEMP = '4'
-    DPS_INDEX_COLOUR     = '5'
+    DPS_INDEX_ON         = '20'
+    DPS_INDEX_MODE       = '21'
+    DPS_INDEX_BRIGHTNESS = '22'
+    DPS_INDEX_COLOURTEMP = '23'
+    DPS_INDEX_COLOUR     = '24'
 
     DPS             = 'dps'
     DPS_MODE_COLOUR = 'colour'
@@ -534,8 +534,8 @@ class BulbDevice(Device):
         Args:
             brightness(int): Value for the brightness (25-255).
         """
-        if not 25 <= brightness <= 255:
-            raise ValueError("The brightness needs to be between 25 and 255.")
+        if not 10 <= brightness <= 1000:
+            raise ValueError("The brightness needs to be between 10 and 1000.")
 
         payload = self.generate_payload(SET, {self.DPS_INDEX_BRIGHTNESS: brightness})
         data = self._send_receive(payload)
@@ -548,15 +548,26 @@ class BulbDevice(Device):
         Args:
             colourtemp(int): Value for the colour temperature (0-255).
         """
-        if not 0 <= colourtemp <= 255:
+        if not 0 <= colourtemp <= 1000:
             raise ValueError("The colour temperature needs to be between 0 and 255.")
 
         payload = self.generate_payload(SET, {self.DPS_INDEX_COLOURTEMP: colourtemp})
         data = self._send_receive(payload)
         return data
 
+#    def turn_on(self):
+#        payload = self.generate_payload(SET, {self.DPS_INDEX_ON: "True"})
+#        data = self._send_receive(payload)
+#        return data 
+
+#    def turn_off(self):
+#        payload = self.generate_payload(SET, {self.DPS_INDEX_ON: "False"})
+#        data = self._send_receive(payload)
+ #       return data 
+
     def brightness(self):
         """Return brightness value"""
+        self.state();
         return self.status()[self.DPS][self.DPS_INDEX_BRIGHTNESS]
 
     def colourtemp(self):
@@ -573,6 +584,22 @@ class BulbDevice(Device):
         hexvalue = self.status()[self.DPS][self.DPS_INDEX_COLOUR]
         return BulbDevice._hexvalue_to_hsv(hexvalue)
 
+
+    def support_color(self):
+        status = self.status()
+        for key in status[self.DPS].keys():
+            if(int(key)==5):
+                return true
+        return false
+
+    def support_color_temp(self):
+       status = self.status()
+
+       for key in status[self.DPS].keys():
+            if(int(key)==4):
+                return true
+       return false
+
     def state(self):
         status = self.status()
         state = {}
@@ -580,5 +607,5 @@ class BulbDevice(Device):
         for key in status[self.DPS].keys():
             if(int(key)<=5):
                 state[self.DPS_2_STATE[key]]=status[self.DPS][key]
-
+            log.debug("DPS key [" +str(key) +"] + ,val [" + str(status[self.DPS][key]) + "]")
         return state
