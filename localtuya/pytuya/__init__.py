@@ -607,5 +607,6 @@ class BulbDevice(Device):
         for key in status[self.DPS].keys():
             if(int(key)<=5):
                 state[self.DPS_2_STATE[key]]=status[self.DPS][key]
-            log.debug("DPS key [" +str(key) +"] + ,val [" + str(status[self.DPS][key]) + "]")
+            #log.debug("DPS key [" +str(key) +"], val [" + str(status[self.DPS][key]) + "]")
+            print("DPS key [" +str(key) +"], val [" + str(status[self.DPS][key]) + "]")
         return state
