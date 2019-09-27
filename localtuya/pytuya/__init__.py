@@ -18,6 +18,8 @@ import sys
 import time
 import colorsys
 import binascii
+import time
+from threading import Lock
 
 try:
     #raise ImportError
@@ -136,7 +138,7 @@ payload_dict = {
 }
 
 class XenonDevice(object):
-    def __init__(self, dev_id, address, local_key=None, dev_type=None, connection_timeout=10):
+    def __init__(self, dev_id, address, local_key=None, dev_type=None, connection_timeout=15):
         """
         Represents a Tuya device.
         
@@ -158,6 +160,7 @@ class XenonDevice(object):
         self.dev_type = dev_type
         self.connection_timeout = connection_timeout
         self.version = 3.1
+        self._tcp_lock = Lock()
 
         self.port = 6668  # default - do not expect caller to pass in
 
@@ -171,13 +174,19 @@ class XenonDevice(object):
         Args:
             payload(bytes): Data to send.
         """
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        s.settimeout(self.connection_timeout)
-        s.connect((self.address, self.port))
-        s.send(payload)
-        data = s.recv(1024)
-        s.close()
+        self._tcp_lock.acquire()
+        try:
+          s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+          s.settimeout(self.connection_timeout)
+          s.connect((self.address, self.port))
+          s.send(payload)
+          data = s.recv(1024)
+          s.close()
+        finally:
+          time.sleep(0.15)
+          self._tcp_lock.release()
+
         return data
 
     def set_version(self, version):
@@ -607,6 +616,5 @@ class BulbDevice(Device):
         for key in status[self.DPS].keys():
             if(int(key)<=5):
                 state[self.DPS_2_STATE[key]]=status[self.DPS][key]
-            #log.debug("DPS key [" +str(key) +"], val [" + str(status[self.DPS][key]) + "]")
-            print("DPS key [" +str(key) +"], val [" + str(status[self.DPS][key]) + "]")
+            log.debug("DPS key [" +str(key) +"] + ,val [" + str(status[self.DPS][key]) + "]")
         return state
