@@ -1,8 +1,6 @@
 """
 Simple platform to control LOCALLY Tuya switch devices.
-
 Sample config yaml
-
 switch:
   - platform: localtuya
     host: 192.168.0.1
@@ -130,11 +128,18 @@ class TuyaCache:
     def color_temp(self):
         return self._device.colourtemp()
 
+    def color_hsv(self):
+        return self._device.color_hsv()
+
     def set_brightness(self, brightness):
         self._device.set_brightness(brightness)
 
     def set_color_temp(self, color_temp):
         self._device.set_colourtemp(color_temp)
+
+    def set_color_hsv(self, color_hsv):
+        self._device.set_color_hsv(color_hsv)
+
     def state(self):
         self._device.state();
  
@@ -189,10 +194,10 @@ class TuyaDevice(Light):
 
         return int(brightness)
 
-#    @property
-#    def hs_color(self):
-#        """Return the hs_color of the light."""
-#        return (self._device.color_hsv()[0],self._device.color_hsv()[1])
+    @property
+    def hs_color(self):
+        """Return the hs_color of the light."""
+        return (self._device.color_hsv()[0],self._device.color_hsv()[1])
 
     @property
     def color_temp(self):
@@ -201,7 +206,7 @@ class TuyaDevice(Light):
         color_temp = self._device.color_temp()
         if color_temp is None:
             return None
-        return int(500 - ( ( (500-153)/1000) * color_temp)) 
+        return int(500 - ( ( (500-153)/ 255) * color_temp)) 
 
     @property
     def min_mireds(self):
@@ -224,7 +229,8 @@ class TuyaDevice(Light):
                 converted_brightness = 10
             self._device.set_brightness(converted_brightness)
         if ATTR_HS_COLOR in kwargs:
-            raise ValueError(" TODO implement RGB from HS")
+            color_hsv = int(kwargs[ATTR_HS_COLOR])
+            self._device.set_color_hsv(int(color_hsv))
         if ATTR_COLOR_TEMP in kwargs:
             color_temp = 1000 - (1000 / (500 - 153)) * (int(kwargs[ATTR_COLOR_TEMP]) - 153)
             self._device.set_color_temp(int(color_temp))
@@ -237,10 +243,9 @@ class TuyaDevice(Light):
     def supported_features(self):
         """Flag supported features."""
         supports = SUPPORT_BRIGHTNESS
-        #if self._device.support_color():
-        #    supports = supports | SUPPORT_COLOR
-        #if self._device.support_color_temp():
-        #    supports = supports | SUPPORT_COLOR_TEMP
+        if self._device.support_color():
+            supports = supports | SUPPORT_COLOR
+        if self._device.support_color_temp():
+            supports = supports | SUPPORT_COLOR_TEMP
         supports = supports | SUPPORT_COLOR_TEMP
         return supports
-
